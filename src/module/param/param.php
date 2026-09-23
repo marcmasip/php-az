@@ -5,6 +5,7 @@ namespace param {
         "detail"=>"Your favorite switch provider"
     ]; }
 
+    //TODO: a preload/cache concept
     class provider extends \conf\provider_file {
         function __construct( private $model = \param\model\param::class ) { }
         function get(string $k, bool $ex = false, mixed $def = null):mixed {
