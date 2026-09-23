@@ -2,7 +2,7 @@
 /**
  * php-az-webpush - webpush.php
  * minimal, low-ceremony, macro-driven:
- * database access layer, active record style, query builder.
+ * webpush implementation with only openssl
  * 
  * @author Marc Masip Marín <marc@azestudio.net>
  */
