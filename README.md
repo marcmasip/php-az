@@ -1,3 +1,4 @@
+🚧 UNDER CONSTRUCTION 🚧
 # About php-az
 It's an opinionated PHP solution exploring pragmatic minimalism. 
 Ultimately, it provides a set of functions and structures to deal with common operations in a rapid and convenient way, surfacing the existing infrastructure.
