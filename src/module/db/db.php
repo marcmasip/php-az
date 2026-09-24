@@ -4,7 +4,7 @@
  * minimal, low-ceremony, macro-driven:
  * database access layer, active record style, query builder.
  * 
- * @author Marc Masip Marín <marc@azestudio.net>
+ * @author Marc Masip Marín + / marc at azestudio.net
  */
 namespace db;
 
@@ -17,7 +17,6 @@ function desc(){
     ];
 }
 
-/** php-ar by marc at azestudio.net & co. (PHP 7.X Compatible ver.) **/
 class expr{ function __construct(public $v) { }}
 
 class db {
@@ -28,15 +27,9 @@ class db {
 	static $qt0 = 0;
 	static $qn = 0;
 	
-	static function expr(string $v): expr { 
-        return new expr($v); 
-    }
-    
-    static function ready(){//test without initialize
-        return static::$conn!=false;
-    }
-	
-	
+	static function expr(string $v): expr { return new expr($v); }
+    static function ready(){ return static::$conn!=false; }
+
     static function init(string $host, string $user, string $pass, string $name): void {
         if (self::$conn) return;
          //  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);

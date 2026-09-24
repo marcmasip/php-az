@@ -1,12 +1,12 @@
 <?php
 /**
- * php-az-form - webpush.php
+ * php-az-form - form.php
  * minimal, low-ceremony, macro-driven:
  * The Only Forms pattern project manages Fields and Processes. 
  * Centralizes app API definition, ACL, and CSRF operations.
  * W.I.P.
  * 
- * @author Marc Masip Marín <marc@azestudio.net>
+ * @author Marc Masip Marín + / marc at azestudio.net
  */
 namespace form {
     
@@ -303,7 +303,7 @@ namespace form {
             if ($in->has("id") && !$this->valid->has("id")) {
                 $raw = $this->valid->raw();
                 $raw['id'] = $in->int("id", false);
-                $this->valid = new \io\in($raw);
+                $this->valid = new \io\inarr($raw);
             }
             return $success;
         }

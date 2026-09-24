@@ -4,7 +4,7 @@
  * minimal, low-ceremony, macro-driven:
  * webpush implementation with only openssl
  * 
- * @author Marc Masip Marín <marc@azestudio.net>
+ * @author Marc Masip Marín + / marc at azestudio.net
  */
 namespace webpush;
 

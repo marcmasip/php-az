@@ -4,7 +4,7 @@
  * minimal, low-ceremony, macro-driven:
  * globals, autoload, conf, and basic io
  * 
- * @author Marc Masip Marín <marc@azestudio.net>
+ * @author Marc Masip Marín + / marc at azestudio.net
  */
 
 namespace {
@@ -182,28 +182,26 @@ namespace conf {
 }
 
 namespace io {
-    class in {
+    
+  
+    abstract class in {
+        
         static self $default;
-        static function web(): self { return new self($_GET + $_POST); }
-        static function web_body(): self { 
-           $raw = file_get_contents('php://input');
-            $json = $raw ? (json_decode($raw, true) ?: []) : [];
-            return new self(array_merge($_GET, $_POST, $json));
-        }
-        static function cli(): self {
-            global $argv; parse_str(implode('&', array_slice($argv ?? [], 1)), $d);
-            return new self($d);
+       
+        public static function web(): inweb { return new inweb(false);  }
+        public static function web_body(): inweb { return new inweb(true);  }
+        public static function cli(): incli {
+            global $argv; 
+            parse_str(implode('&', array_slice($argv ?? [], 1)), $d);
+            return new inarr($d);
         }
 
-        public function __construct(public readonly array $data = []) {}
-        function raw(): array { return $this->data; }
-        function has(string $k): bool { return array_key_exists($k, $this->data); }
-        function any(string $k, bool $ex=false, mixed $def=null): mixed {
-            return array_key_exists($k, $this->data) ? $this->data[$k] : ($ex ? \err("in_req: $k") : $def);
-        }
-        function sub(string $k, bool $ex=true): self { return new self($this->arr($k,$ex) ?? []); }
+        abstract public function has(string $k): bool;
+        abstract public function any(string $k, bool $ex = false, mixed $def = null): mixed;
+        abstract public function raw(): array;
         
-// Typed extractors
+        // Typed extractors
+        function sub(string $k, bool $ex=true): self { return new inarr($this->arr($k,$ex) ?? []); }
         function str(string $k, bool $ex=true, mixed $def=null): ?string { $v = $this->any($k,$ex,$def); return $v !== null ? (string)$v : null; }
         function int(string $k, bool $ex=true, mixed $def=null): ?int    { $v = $this->any($k,$ex,$def); return $v !== null ? (int)$v : null; }
         function num(string $k, bool $ex=true, mixed $def=null): ?float  { $v = $this->any($k,$ex,$def); return $v !== null ? (float)$v : null; }
@@ -239,6 +237,62 @@ namespace io {
             return implode('/', $parts);
         }
        
+    }
+    
+    class inweb{
+        
+        private ?array $json = null;
+        public function __construct(private bool $json_parse = false) {}
+
+        private function json(): array {
+            if ($this->json === null) {
+                $raw = file_get_contents('php://input');
+                $this->json = $raw ? (json_decode($raw, true) ?: []) : [];
+            }
+            return $this->json;
+        }
+
+        public function has(string $k): bool {
+            if ($this->json_parse && array_key_exists($k, $this->json())) return true;
+            if (array_key_exists($k, $_POST)) return true;
+            if (array_key_exists($k, $_GET)) return true;
+            return false;
+        }
+
+        public function any(string $k, bool $ex = false, mixed $def = null): mixed {
+            if ($this->json_parse) {
+                $j = $this->json();
+                if (array_key_exists($k, $j)) return $j[$k];
+            }
+            if (array_key_exists($k, $_POST)) return $_POST[$k];
+            if (array_key_exists($k, $_GET)) return $_GET[$k];
+            return $ex ? \err("in_req: $k") : $def;
+        }
+
+        public function raw(): array {
+            $base = array_merge($_GET, $_POST);
+            if ($this->json_parse) {
+                $base = array_merge($base, $this->json());
+            }
+            return $base;
+        }
+    }
+    class inarr{
+        public function __construct(public readonly array $data = []) {}
+
+        public function has(string $k): bool { 
+            return array_key_exists($k, $this->data); 
+        }
+
+        public function any(string $k, bool $ex = false, mixed $def = null): mixed {
+            return array_key_exists($k, $this->data) 
+                ? $this->data[$k] 
+                : ($ex ? \err("in_req: $k") : $def);
+        }
+
+        public function raw(): array { 
+            return $this->data; 
+        }
     }
 
     class out {

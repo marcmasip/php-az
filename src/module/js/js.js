@@ -3,7 +3,7 @@
  * minimal, low-ceremony, macro-driven:
  * dinamic document contents with control logics.
  * 
- * @author Marc Masip Marín <marc@azestudio.net>
+ * @author Marc Masip Marín + / marc at azestudio.net
  */
 const mk = (tag, content, attrs = {}) => {
     const el = typeof tag === 'function' ? new tag() : document.createElement(tag);

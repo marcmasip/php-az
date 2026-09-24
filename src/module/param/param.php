@@ -5,14 +5,18 @@ namespace param {
         "detail"=>"Your favorite switch provider"
     ]; }
 
-    //TODO: a preload/cache concept
     class provider extends \conf\provider_file {
         function __construct( private $model = \param\model\param::class ) { }
+        static $loaded=false;        
         function get(string $k, bool $ex = false, mixed $def = null):mixed {
             if(!\db\db::ready())  goto normal;
-            $reg = ($this->model)::where("name = ?", $k)->fetch()->first();
-            if(!$reg) goto normal;
-            return $reg->value;
+            if(!static::$loaded){
+                static::$loaded = [];
+                foreach( ($this->model)::where("preload = 1")->fetch() as $r){
+                    static::$loaded[$r->name] = $r->value;
+                }
+            }            
+            if(isset( static::$loaded[$k] )) return static::$loaded[$k];            
             normal:
             return parent::get($k, $ex, $def);
         }
