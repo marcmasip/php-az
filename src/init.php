@@ -12,10 +12,12 @@ namespace {
     // Here we go, a $MOD_MAP is already defined
     if(defined("AZ_VER")) return; define('AZ_VER', '0.4.0');
     if(!defined("AZ_TEST")) define('AZ_TEST', false );
-    if(!isset($MOD_MAP))  $MOD_MAP = [__DIR__ . '/module' => $WEB_BASE . '_az/module'];
     if(!isset($WEB_BASE)) $WEB_BASE = "/";
+    if(!isset($MOD_MAP))  $MOD_MAP = [__DIR__ . '/module' => $WEB_BASE . '_az/module']; 
 
-    // exceptions with additional debug data
+    // suggest a message convention with additional debug data
+    // message is an identifier that can/must be used by logics, with optional additional words for user messages.
+    // eg. "invalid_login Invalid credentials"
     class err_ex extends Exception {
         public readonly string $id;
         function __construct(string $msg, public readonly mixed $data = null) {
@@ -32,6 +34,8 @@ namespace {
     function conf_url($path,$args = null){
         return conf("url_protocol").conf("url_host").$path. ($args? "?".http_build_query($args) : "");
     }
+    
+    if(!defined("AZ_DEBUG")) define("AZ_DEBUG",conf("debug",false,false));
 
     \io\in::$default = php_sapi_name() === 'cli' ? \io\in::cli() : \io\in::web();
 
@@ -147,9 +151,13 @@ namespace {
         try {
             \log\debug("Action ". realpath($file));
             return include $file;
-        } catch (\Exception $e) {
+         } catch (\err_ex $e) {
             \log\error("action_exception".$e->getMessage(), $e->getTraceAsString());
-            out_fail($e->getCode(), $e->getMessage());
+            out_fail($e->id, $e->getMessage() );
+        } catch (\Error | Exception $e) {
+            \log\error("php_exception".$e->getMessage(), $e->getTraceAsString());
+            error_log("php_exception: ".$e->getMessage());
+            out_fail("php_exception", "Unexpected error");
         }    
     }
    

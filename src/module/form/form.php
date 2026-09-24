@@ -15,11 +15,23 @@ namespace form {
     function desc() { 
         return [
             "title" => "Only-Forms Pattern", 
-            "desc"  => "Provides CRUD and listing functions",
+            "desc"  => "Provides CRUD and listing fuctions",
             "ver"   => "0.6.0"
         ];
     }
 
+    /**
+     * Schema defines fields with a type id and map of properties.
+     * props are metadata related for the form and field.
+     * 
+     * .fields = [ "text", ["req"=>1] ];
+     * .props = is for util metadata about form logics
+     * .model = optional pointing to active record table
+     * .acl = optional map for defining actions for each role
+     * 
+     * It's used to define query columns or define expected form fields
+     * 
+     */
     abstract class schema {
 
         const 
@@ -142,6 +154,9 @@ namespace form {
 
     }
 
+    /**
+     * Uses the schema for describe the expected fields
+     */
     abstract class form extends schema {
 
         protected array $data = [];
@@ -196,7 +211,6 @@ namespace form {
                 }
             }
 
-            // El formulario ahora empaqueta SOLO lo esperado en tu propia infra
             $this->valid = new \io\in($clean_data);
 
             return empty($this->errors);
@@ -211,7 +225,9 @@ namespace form {
         }
     }
 
-
+    /**
+     * A form/process that is stores in a reacord
+     */
     abstract class modelform extends form {
 
         public $record;
@@ -224,7 +240,6 @@ namespace form {
             $model_class = static::model;
             if (!$model_class) throw new \Exception("model_not_defined_for_form");
 
-            // Usamos nuestro input validado. Si no está ahí, fallback global o null
             $id = $this->valid->int('id', false) ?? \in_int('id', false);
 
             if ($id) {
@@ -243,15 +258,11 @@ namespace form {
             $this->setup(); 
             $this->proc_auth();
 
-           
-
-            // Pasamos nuestro objeto inputs saneado
-            $this->to($this->record, $this->valid, $this->changes);
+            $this->to($this->record, $this->valid, $this->changes); //copy vals
             
-             $this->model_edit($this->record); 
-
+            $this->model_edit($this->record);                       //edit hook
             $this->record->save();
-            $this->model_saved($this->record); 
+            $this->model_saved($this->record);                      //saved hook
 
             if (!empty($this->changes)) {
                 $model_class = static::model;
@@ -264,7 +275,7 @@ namespace form {
         protected function model_edit($m) {}
         protected function model_saved($m) {}
 
-        // Ahora recibe explícitamente \inputs en lugar de un array
+        // To Record copy form vals to the active record
         protected function to($record, \io\in $valid_data, array &$changed) {
             foreach (static::fields_info() as $name => $inf) { 
                 if (($inf[1]['map'] ?? true) === false) {
@@ -273,10 +284,8 @@ namespace form {
                 $this->tof($name, $valid_data, $record, $changed);
             }
         }
-
-        // Mucho más expresivo y robusto usando tu clase
+        //To Record Field can be used as a hook for special copy (eg: hash a passwd)
         protected function tof(string $k, \io\in $valid_data, $record, array &$changed) {
-            // Si no está en el input validado, o es un string vacío, ignoramos
             if (!$valid_data->has($k) || $valid_data->any($k) === "") return;
 
             $new_val = $valid_data->any($k);
@@ -287,74 +296,35 @@ namespace form {
             }
         }
 
+        //asign the inputs for the form
         public function recv(\io\in $in=null): bool {
             if($in==null) $in = \io\in::$default;
             $success = parent::recv($in);
-
-            // Si hay ID en el request original, lo forzamos dentro de nuestros inputs validados
-            // (Reconstruimos el input validado añadiendo el ID para que proc_auth pueda usarlo)
             if ($in->has("id") && !$this->valid->has("id")) {
                 $raw = $this->valid->raw();
                 $raw['id'] = $in->int("id", false);
                 $this->valid = new \io\in($raw);
             }
-
             return $success;
         }
 
     }
 
-
+    // util base to delete records
     abstract class modelformdel extends modelform {
 
         public function proc() {
             $this->setup();
             $this->proc_auth();
-
             $model_class = static::model; 
-
             \log\trace("form:save model={$model_class} uid={$this->user->id()} id={$this->record->id()} delete");
-
             $this->record->del();
-
             return true;
         }
     }
 
 }
 
-
-namespace form\f {
-    
-     const
-     REQ=1, FILTER=2, NAME=4,DESC=8,NOMAP=16,PASSWD=32;
-     
-    function desc($t,$opts=0,$contents=[]){
-        $r = [];
-       if($opts & REQ > 0 )$r["required"] = true;
-       if($opts & FILTER > 0 )$r["filter"] = true;
-       if($opts & NAME > 0 )$r["named"] = true;
-	   if($opts & PASSWD > 0 )$r["password"] = false;
-       if($contents){
-		   if(is_array($contents)){
-				$r["options"] = $contents;
-				
-		   }else if(is_string($contents)){
-			   
-			   $form = \form\search($contents);
-			   //TODO magically count this and offer options or the client to make searches
-			  // $r["options"] = $form::as_options();
-		   }
-       }
-       return [$t,$r];
-    }
-    
-    function text($opts=0){ return desc("text",$opts); }
-    function sel($contents=[],$opts=0){ return desc("select",$opts,$contents); }
-    function fk($contents=[],$opts=0){ return desc("select",$opts,$contents); }
-    function check($opts=0){ return desc("bool",$opts); }
-	 
-}
 namespace {
     function in_form(string $k, bool $ex = true): ?\form\schema {
        if (!($id = in_str($k, $ex))) return null;

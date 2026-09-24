@@ -39,7 +39,7 @@ class db {
 	
     static function init(string $host, string $user, string $pass, string $name): void {
         if (self::$conn) return;
-      //  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+         //  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 		//error_log("E $host NAME=$name");
         self::$conn = mysqli_connect($host, $user, $pass, $name);
         mysqli_set_charset(self::$conn, 'utf8mb4');
@@ -208,23 +208,18 @@ class sel {
         foreach ($vals as $i => $val) {
             $out .= $parts[$i];
 
-            // 2. EXTRACCIÓN/CONVERSIÓN DE VALORES
             if ($val instanceof \db\rows) {
                 $val = $val->ids();
             } elseif ($val instanceof \db\ar) {
                 $val = $val->id();
             }
 
-            // A. SUBCONSULTAS (El objeto sel)
             if ($val instanceof \db\sel) {
-                
-               
-                if ($val instanceof \db\selempty) return $val; // Propagación vacía
 
-                $sub = clone $val; // Clonamos para no ensuciar el select original por si lo reutilizas
-                
-                // Si la subconsulta sigue en "SELECT *", forzamos a que seleccione solo su PK
-                // (Al estar dentro de la clase sel, podemos leer $sub->cols aunque sea privado)
+                if ($val instanceof \db\selempty) return $val; 
+
+                $sub = clone $val; 
+              
                 if ($sub->cols === ['*'] && $sub->class()) {
                     $pk = defined($sub->class() . '::PK') ? $sub->class()::PK : 'id';
                     $sub->select("`$pk`");
@@ -237,13 +232,9 @@ class sel {
 
                 $out .= "(" . $sub->sql() . ")"; // Envuelve el SQL de la subconsulta
                 array_push($extra, ...$sub->bind);
-                
-            // B. ARRAYS (Para rows y listas)
+
             } elseif (is_array($val)) {
-                if (empty($val)) {
-             
-                    return new selempty($this->from);
-                }
+                if (empty($val))  return new selempty($this->from);
 
                 $replaced = false;
                 if (preg_match('/=\s*$/', $out)) {
@@ -256,8 +247,7 @@ class sel {
                 if ($replaced) $out .= ')';
                 
                 array_push($extra, ...array_values($val));
-                
-            // C. ESCALARES NORMALES
+
             } else {
                 $out .= '?';
                 $extra[] = $val;
@@ -301,7 +291,6 @@ class sel {
         $set = [];$set_bind = [];
 
         foreach ($data as $col =>$val) {
-            // Si el valor es una expresión cruda (ej: db::expr('NOW()')), no se bindea
             if ($val instanceof \db\expr) {$set[] = "`$col` = {$val->v}";
             } else {
                 $set[] = "`$col` = ?";
@@ -385,7 +374,6 @@ class rows implements \Iterator, \Countable, \ArrayAccess{
         if ($this->pool !== null) return isset($this->pool[$i]) ? $this->pool[$i] : null;
         if (!$this->res) return null;
 
-        // Soporte condicional por si PHP < 7.4 no tiene WeakReference
         if (isset($this->weak[$i]) && class_exists('\WeakReference') && $this->weak[$i] instanceof \WeakReference && $row = $this->weak[$i]->get()) {
             return $row;
         }
@@ -514,22 +502,11 @@ class rowsempty extends rows{
 
 class selempty extends sel {
     function fetch(?string $as = null) { 
-       
         return new rowsempty($this, $as ?: $this->class());  
     }
-    
-    // OPTIMIZACIÓN: Evitar hits a base de datos
-    function count(): int { 
-        return 0; 
-    }
-    
-    function first(?string $as = null) { 
-        return null; 
-    }
-    
-    function del(): int {
-        return 0; // No hay nada que borrar
-    }
+    function count(): int {  return 0;  }
+    function first(?string $as = null) {   return null; }
+    function del(): int { return 0;  }
 }
 
 class ar implements \ArrayAccess{
@@ -692,7 +669,6 @@ class ar implements \ArrayAccess{
 	function reload() {
 		if ($this->_new) throw new \Exception("ar_reload_unsaved");
 
-		// Aprovechamos el método find() que acabamos de adaptar
 		$fresh = is_array(static::PK) ? static::find($this->id()) : static::find($this->{static::PK});
 
 		if (!$fresh) throw new \Exception("ar_not_found");

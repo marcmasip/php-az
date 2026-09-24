@@ -19,7 +19,7 @@ const mk = (tag, content, attrs = {}) => {
     if (content !== undefined) _fill(el, content);
     return el;
 };
-//most used for generic containers
+// utils used for generic containers
 const mkv  = (cls, content, attrs = {}) => mk('div', content, { ...attrs, class: cls });
 const mkbt = (label, onclick, attrs = {}) => mk('button', label, { ...attrs, type: 'button', onclick });
 
