@@ -15,9 +15,7 @@ namespace {
     if(!isset($WEB_BASE)) $WEB_BASE = "/";
     if(!isset($MOD_MAP))  $MOD_MAP = [__DIR__ . '/module' => $WEB_BASE . '_az/module']; 
 
-    // suggest a message convention with additional debug data
-    // message is an identifier that can/must be used by logics, with optional additional words for user messages.
-    // eg. "invalid_login Invalid credentials"
+    // holds additional data to log
     class err_ex extends Exception {
         public readonly string $id;
         function __construct(string $msg, public readonly mixed $data = null) {
@@ -25,8 +23,16 @@ namespace {
         }
     }
     
-    // conf provider may be extended eg. with database see param module
+    /**
+     * A simple exception convention
+     * @param string $msg is public and first word is an identifier (eg: invalid_input) used by logics, the rest is optional.
+     * @param mixed $data dumped in debug logs
+     * @return never
+     * @throws err_ex
+     */
     function err(string $msg, mixed $data=null): never { throw new err_ex($msg, $data); }
+    
+    // Runtime configuration
     function conf(string $k, bool $ex=false, mixed $def=null): mixed {
         \conf\state::$provider ??= new \conf\provider_file();
         return \conf\state::$loaded[$k] ??= \conf\state::$provider->get($k, $ex, $def);
@@ -57,9 +63,10 @@ namespace {
     function out_exit (): never { \io\out::exit(); }
  
    /**
-    * Resolves module\group\object namespaces with file fallbacks:
+    * Resolves module\group\object namespaces with file lookups:
     * mod/group/name.php -> mod/group.php -> mod/mod.php
-    * $MOD_MAP provides base lookup paths (local_path => url_path).
+    * $MOD_MAP provides local_path => url_path.
+    *
     */
     spl_autoload_register(function (string $cls) {
         global $MOD_MAP;
@@ -165,6 +172,8 @@ namespace {
 
 namespace conf {
     interface provider { function get(string $k, bool $ex=false, mixed $def=null): mixed; }
+    //configuration format is PHP returning an array;    
+    //looks for one default (versioned) and one deployed in the environtment (addr., secrets,  etc)
     class provider_file implements provider {
         function get(string $k, bool $ex=false, mixed $def=null): mixed {
             global $RUN; static $cfg = null;
@@ -182,8 +191,7 @@ namespace conf {
 }
 
 namespace io {
-    
-  
+
     abstract class in {
         
         static self $default;
@@ -206,7 +214,7 @@ namespace io {
         function int(string $k, bool $ex=true, mixed $def=null): ?int    { $v = $this->any($k,$ex,$def); return $v !== null ? (int)$v : null; }
         function num(string $k, bool $ex=true, mixed $def=null): ?float  { $v = $this->any($k,$ex,$def); return $v !== null ? (float)$v : null; }
         function arr(string $k, bool $ex=true, mixed $def=null): ?array  { 
-            $v = $this->any($k,$ex,$def); return ($v !== null && !is_array($v)) ? ($ex ? \err("in_arr: $k") : null) : $v; 
+            $v = $this->any($k,$ex,$def); return ($v !== null && !is_array($v)) ? ($ex ? \err("in_arr $k") : null) : $v; 
         }
         function bool(string $k, bool $ex=false, mixed $def=null): ?bool { 
             $v = $this->any($k,$ex,$def); 
@@ -218,8 +226,8 @@ namespace io {
             return array_map(fn($r) => is_array($r) ? new self($r) : \err("in_arrin: $k"), $this->arr($k,$ex) ?? []);
         }
         function json(string $k, bool $ex=true, mixed $def=null): mixed { $v = $this->str($k,$ex); return $v !== null ? val::json($v,$ex,$def) : $def; }
-        function email(string $k, bool $ex=true, mixed $def=null): ?string { $v = $this->str($k,$ex); return $v !== null ? (val::email($v) ?? ($ex ? \err("in_email: $k") : $def)) : $def; }
-        function expr(string $k, string $p, bool $ex=true, mixed $def=null): ?string { $v = $this->str($k,$ex); return $v !== null ? (val::expr($v,$p) ?? ($ex ? \err("in_expr: $k") : $def)) : $def; }
+        function email(string $k, bool $ex=true, mixed $def=null): ?string { $v = $this->str($k,$ex); return $v !== null ? (val::email($v) ?? ($ex ? \err("in_email $k") : $def)) : $def; }
+        function expr(string $k, string $p, bool $ex=true, mixed $def=null): ?string { $v = $this->str($k,$ex); return $v !== null ? (val::expr($v,$p) ?? ($ex ? \err("in_expr $k") : $def)) : $def; }
     }
 
     class val {
@@ -229,7 +237,7 @@ namespace io {
         static function url(string $v): ?string { return filter_var($v, FILTER_VALIDATE_URL) ?: null; }
         static function ip(string $v): ?string { return filter_var($v, FILTER_VALIDATE_IP) ?: null; }
         static function in(mixed $v, array $a): mixed { return in_array($v, $a, true) ? $v : null; }
-        static function json(string $s, bool $ex=true, mixed $def=null): mixed { $r = json_decode($s, true); return $r ?? ($ex ? \err("val_json: fail") : $def); }
+        static function json(string $s, bool $ex=true, mixed $def=null): mixed { $r = json_decode($s, true); return $r ?? ($ex ? \err("val_json fail") : $def); }
         static function range(int|float $v, int|float $min=null, int|float $max=null): int|float|null { return ($min === null || $v >= $min) && ($max === null || $v <= $max) ? $v : null; }
         static function cleanpath(string $p): string {
             $p = str_replace(['\\', chr(0)], ['/', ''], $p);
@@ -266,7 +274,7 @@ namespace io {
             }
             if (array_key_exists($k, $_POST)) return $_POST[$k];
             if (array_key_exists($k, $_GET)) return $_GET[$k];
-            return $ex ? \err("in_req: $k") : $def;
+            return $ex ? \err("in_req $k") : $def;
         }
 
         public function raw(): array {
@@ -287,7 +295,7 @@ namespace io {
         public function any(string $k, bool $ex = false, mixed $def = null): mixed {
             return array_key_exists($k, $this->data) 
                 ? $this->data[$k] 
-                : ($ex ? \err("in_req: $k") : $def);
+                : ($ex ? \err("in_req $k") : $def);
         }
 
         public function raw(): array { 
