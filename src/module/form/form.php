@@ -21,15 +21,13 @@ namespace form {
     }
 
     /**
-     * Schema defines fields with a type id and map of properties.
-     * props are metadata related for the form and field.
+     * Schema decribes query columns or form fields
+     * Can be search by name as <module>_form_<name>
      * 
      * .fields = ["name"=> [ "text", [ "req"=>1 ] ] ;
      * .props = is for util metadata about form logics
      * .model = optional pointing to active record table
      * .acl = optional map for defining actions for each role
-     * 
-     * It's used to define query columns or define expected form fields
      * 
      */
     abstract class schema {
