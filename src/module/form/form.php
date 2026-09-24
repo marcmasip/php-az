@@ -24,7 +24,7 @@ namespace form {
      * Schema defines fields with a type id and map of properties.
      * props are metadata related for the form and field.
      * 
-     * .fields = [ "text", ["req"=>1] ];
+     * .fields = ["name"=> [ "text", [ "req"=>1 ] ] ;
      * .props = is for util metadata about form logics
      * .model = optional pointing to active record table
      * .acl = optional map for defining actions for each role
